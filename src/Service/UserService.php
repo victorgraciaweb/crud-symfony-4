@@ -3,32 +3,38 @@
 namespace App\Service;
 
 use App\Entity\User;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Repository\UserRepository;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\Serializer\SerializerInterface;
 
 class UserService
 {
-    private $entityManager;
-    private $serializer;
+    /**
+     * @var UserRepository
+     */
+    private $userRepository;
+
+    /**
+     * @var JwtAuth
+     */
     private $jwtAuth;
+
+    /**
+     * @var Helpers
+     */
     private $helpers;
 
     /**
-     * @param EntityManagerInterface $entityManager
-     * @param SerializerInterface $serializer
+     * @param UserRepository $userRepository
      * @param JwtAuth $jwtAuth
      * @param Helpers $helpers
      */
     public function __construct(
-        EntityManagerInterface $entityManager,
-        SerializerInterface $serializer,
+        UserRepository $userRepository,
         JwtAuth $jwtAuth,
         Helpers $helpers
     )
     {
-        $this->entityManager = $entityManager;
-        $this->serializer = $serializer;
+        $this->userRepository = $userRepository;
         $this->jwtAuth = $jwtAuth;
         $this->helpers = $helpers;
     }
@@ -51,8 +57,7 @@ class UserService
         $user->setEmail($email);
         $user->setPassword($pwd);
 
-        $this->entityManager->persist($user);
-        $this->entityManager->flush();
+        $this->userRepository->save($user);
 
         $response = array(
             "code" => 200,
@@ -71,16 +76,13 @@ class UserService
      */
     public function login($email, $password, $gethash)
     {
-        $repository = $this->entityManager->getRepository(User::class);
-
         $pwd = hash("sha256", $password);
 
-        $user = $repository->findOneBy(
-            array(
-                'email' => $email,
-                'password' => $pwd
-            )
-        );
+        $user = new User();
+        $user->setEmail($email);
+        $user->setPassword($pwd);
+
+        $user = $this->userRepository->findOneBy($user);
 
         if($user){
             if($gethash == null) {
@@ -110,17 +112,14 @@ class UserService
         $authCheck = $this->helpers->authCheck($hash);
 
         if($authCheck == true) {
-            $repository = $this->entityManager->getRepository(User::class);
-            $user = $repository->find($id);
+            $user = $this->userRepository->find($id);
 
             if($user){
-
-                $data = json_decode($this->serializer->serialize($user, 'json'));
 
                 $response = array(
                     "code" => 200,
                     "message" => "Correct",
-                    "data" => $data,
+                    "data" => $user,
                 );
 
             }else{
@@ -149,16 +148,13 @@ class UserService
     {
         $authCheck = $this->helpers->authCheck($hash);
 
-        if($authCheck == true) {
-            $repository = $this->entityManager->getRepository(User::class);
-            $users = $repository->findAll();
-
-            $data = json_decode($this->serializer->serialize($users, 'json'));
+        if($authCheck != true) {
+            $users = $this->userRepository->findAll();
 
             $response = array(
                 "code" => 200,
                 "message" => "Correct",
-                "data" => $data,
+                "data" => $users,
             );
 
         }else{
@@ -182,12 +178,10 @@ class UserService
         $authCheck = $this->helpers->authCheck($hash);
 
         if($authCheck == true) {
-            $repository = $this->entityManager->getRepository(User::class);
-            $user = $repository->find($id);
+            $user = $this->userRepository->find($id);
 
             if($user){
-                $this->entityManager->remove($user);
-                $this->entityManager->flush();
+                $this->userRepository->delete($user);
 
                 $response = array(
                     "code" => 200,

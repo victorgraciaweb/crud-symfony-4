@@ -4,6 +4,9 @@ namespace App\Service;
 
 class Helpers{
 
+    /**
+     * @var JwtAuth
+     */
     public $jwtAuth;
 
     /**

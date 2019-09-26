@@ -3,20 +3,78 @@
 namespace App\Repository;
 
 use App\Entity\User;
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\DBAL\DBALException;
-use Symfony\Bridge\Doctrine\RegistryInterface;
+use Doctrine\ORM\EntityManagerInterface;
 
-/**
- * @method User|null find($id, $lockMode = null, $lockVersion = null)
- * @method User|null findOneBy(array $criteria, array $orderBy = null)
- * @method User[]    findAll()
- * @method User[]    findBy(array $criteria, array $orderBy = null, $limit = null, $offset = null)
- */
-class UserRepository extends ServiceEntityRepository
+class UserRepository implements UserRepositoryInterface
 {
-    public function __construct(RegistryInterface $registry)
+    /**
+     * @var EntityManagerInterface
+     */
+    private $entityManager;
+    /**
+     * @var UserRepository
+     */
+    private $userRepository;
+
+    /**
+     * @param EntityManagerInterface $entityManager
+     */
+    public function __construct(EntityManagerInterface $entityManager)
     {
-        parent::__construct($registry, User::class);
+        $this->entityManager = $entityManager;
+        $this->userRepository = $this->entityManager->getRepository(User::class);
+    }
+
+    /**
+     * @param int $id
+     * @return User
+     */
+    public function find(int $id): User
+    {
+        $user = $this->userRepository->find($id);
+        return $user;
+    }
+
+    /**
+     * @param User $user
+     * @return User
+     */
+    public function findOneBy(User $user): User
+    {
+        $user = $this->userRepository->findOneBy(
+            array(
+                'email' => $user->getEmail(),
+                'password' => $user->getPassword()
+            )
+        );
+
+        return $user;
+    }
+
+    /**
+     * @return array
+     */
+    public function findAll(): array
+    {
+        $users = $this->userRepository->findAll();
+        return $users;
+    }
+
+    /**
+     * @param User $user
+     */
+    public function save(User $user): void
+    {
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+    }
+
+    /**
+     * @param User $user
+     */
+    public function delete(User $user): void
+    {
+        $this->entityManager->remove($user);
+        $this->entityManager->flush();
     }
 }
